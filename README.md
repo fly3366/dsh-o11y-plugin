@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.jpeg" alt="dsh-o11y-plugin banner" width="800">
+</p>
+
 # dsh-o11y-plugin
 
 Unified plugin-dimension observability (trace / log / metric) for

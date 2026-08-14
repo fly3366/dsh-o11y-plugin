@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.jpeg" alt="dsh-o11y-plugin banner" width="800">
+</p>
+
 # dsh-o11y-plugin
 
 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) 的统一
