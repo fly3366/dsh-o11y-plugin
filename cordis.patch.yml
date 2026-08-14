@@ -1,0 +1,5 @@
+# dsh-o11y-plugin bundle patch.
+# Install: dsh plugin --profile <name> add github:fly3366/dsh-o11y-plugin
+- insert:
+    - id: o11y
+      name: dsh-o11y-plugin
