@@ -26,7 +26,9 @@ MeterProvider / LoggerProvider + OTLP HTTP exporter）。任何插件只要使�
 经由本插件导出——无需各自实现 OTel。
 
 第一个使用方：[deepjit](https://github.com/fly3366/DeepJIT)，其 `metrics.ts`
-通过 `@opentelemetry/api` 上报 counter/histogram。
+通过 `@opentelemetry/api` 上报 counter/histogram，并为每次 LLM 调用发出
+**GenAI 语义约定 span**（`gen_ai.system` / `gen_ai.request.model` /
+`gen_ai.usage.*_tokens`），经本插件导出后可在支持 gen_ai 的后端渲染。
 
 ## 安装
 
