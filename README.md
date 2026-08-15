@@ -63,7 +63,7 @@ emitting pipeline counters and GenAI (`gen_ai.*`) LLM spans.
 | Key | Default | Description |
 |---|---|---|
 | `enabled` | `true` | master switch |
-| `serviceName` | `dsh-plugin` | OTel resource `service.name` |
+| `serviceName` | `''` (→ `OTEL_SERVICE_NAME` → `dsh-plugin`) | OTel resource `service.name` |
 | `endpoint` | `''` (→ `OTEL_EXPORTER_OTLP_ENDPOINT` → `http://localhost:4318`) | OTLP/HTTP endpoint |
 | `enableTraces` / `enableMetrics` / `enableLogs` | `true` | per-signal toggles |
 | `metricExportIntervalMs` | `60000` | periodic metric export interval |

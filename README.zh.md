@@ -60,7 +60,7 @@ GenAI（`gen_ai.*`）LLM span。
 | 配置 | 默认 | 说明 |
 |---|---|---|
 | `enabled` | `true` | 总开关 |
-| `serviceName` | `dsh-plugin` | OTel resource `service.name` |
+| `serviceName` | `''`（→ `OTEL_SERVICE_NAME` → `dsh-plugin`） | OTel resource `service.name` |
 | `endpoint` | `''`（→ `OTEL_EXPORTER_OTLP_ENDPOINT` → `http://localhost:4318`） | OTLP/HTTP endpoint |
 | `enableTraces` / `enableMetrics` / `enableLogs` | `true` | 按信号开关 |
 | `metricExportIntervalMs` | `60000` | metric 周期导出间隔 |

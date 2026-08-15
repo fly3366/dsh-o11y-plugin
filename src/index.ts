@@ -27,7 +27,8 @@ export function apply(ctx: Context, config: O11yConfig) {
 
   const endpoint =
     config.endpoint || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
-  const resource = resourceFromAttributes({ 'service.name': config.serviceName })
+  const serviceName = config.serviceName || process.env.OTEL_SERVICE_NAME || 'dsh-plugin'
+  const resource = resourceFromAttributes({ 'service.name': serviceName })
 
   const providers: { shutdown: () => Promise<void> }[] = []
 
@@ -84,7 +85,7 @@ export function apply(ctx: Context, config: O11yConfig) {
   }
 
   ctx.provide('o11y', {
-    serviceName: config.serviceName,
+    serviceName,
     endpoint,
     active: true,
   } satisfies O11yHandle)

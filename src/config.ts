@@ -13,7 +13,7 @@ export interface O11yConfig {
 
 export const Config: Schema<O11yConfig> = Schema.object({
   enabled: Schema.boolean().default(true),
-  serviceName: Schema.string().default('dsh-plugin'),
+  serviceName: Schema.string().default(''),
   endpoint: Schema.string().default(''),
   enableTraces: Schema.boolean().default(true),
   enableMetrics: Schema.boolean().default(true),
