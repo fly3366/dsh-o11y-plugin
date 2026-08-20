@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { trace, metrics } from '@opentelemetry/api'
+import { metrics } from '@opentelemetry/api'
 import { logs, SeverityNumber } from '@opentelemetry/api-logs'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import { NodeTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
@@ -8,7 +8,7 @@ import { LoggerProvider, BatchLogRecordProcessor } from '@opentelemetry/sdk-logs
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
-import { Config, type O11yConfig } from './config.ts'
+import type { O11yConfig } from './config.ts'
 
 export { Config } from './config.ts'
 

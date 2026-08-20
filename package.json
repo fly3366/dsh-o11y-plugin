@@ -47,6 +47,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "test": "node --test \"tests/*.test.ts\"",
+    "lint": "oxlint src tests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -64,6 +65,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "oxlint": "^1.79.0",
     "typescript": "^5.6.0"
   }
 }
