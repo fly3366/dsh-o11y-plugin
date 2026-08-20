@@ -23,8 +23,9 @@ community-compatible observability without implementing OTel per plugin.
 
 | Item | Value |
 |---|---|
-| DSH version | `@deepseek-ai/dsh` `0.1.0-rc.6` (Cordis `4.0.1`) |
-| Last verified | 2026-08-15 (unit tests against `@deepseek-ai/cordis` `4.0.1`) |
+| DSH compatibility | `@deepseek-ai/dsh` `0.1.0-rc.6`–`rc.8` (optional bridge hook unchanged; no dsh service deps) |
+| Runtime dependency | `@deepseek-ai/cordis` `4.0.1` only |
+| Last verified | 2026-08-20 (unit tests against `@deepseek-ai/cordis` `4.0.1`) |
 | Node | `^22.19 \|\| >=24` |
 | Profiles | `headless`, `web` |
 

@@ -21,8 +21,9 @@ log，并将 dsh 会话遥测桥接为 OTel log。面向希望获得标准、社
 
 | 项 | 值 |
 |---|---|
-| DSH 版本 | `@deepseek-ai/dsh` `0.1.0-rc.6`（Cordis `4.0.1`） |
-| 最后验证 | 2026-08-15（基于 `@deepseek-ai/cordis` `4.0.1` 的单元测试） |
+| DSH 兼容性 | `@deepseek-ai/dsh` `0.1.0-rc.6`–`rc.8`（可选桥接钩子未变；无 dsh 服务依赖） |
+| 运行时依赖 | 仅 `@deepseek-ai/cordis` `4.0.1` |
+| 最后验证 | 2026-08-20（基于 `@deepseek-ai/cordis` `4.0.1` 的单元测试） |
 | Node | `^22.19 \|\| >=24` |
 | 适用 profile | `headless`、`web` |
 
