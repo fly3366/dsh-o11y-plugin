@@ -35,7 +35,10 @@ dsh's `session-telemetry-otel`.
 ## Install / Uninstall
 
 ```sh
-# install
+# install from npm
+dsh plugin --profile web add dsh-o11y-plugin
+
+# or install from git
 dsh plugin --profile web add github:fly3366/dsh-o11y-plugin
 
 # disable for one profile

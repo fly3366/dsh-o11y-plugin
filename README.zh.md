@@ -32,7 +32,10 @@ log，并将 dsh 会话遥测桥接为 OTel log。面向希望获得标准、社
 ## 安装 / 卸载
 
 ```sh
-# 安装
+# 从 npm 安装
+dsh plugin --profile web add dsh-o11y-plugin
+
+# 或 git 直装
 dsh plugin --profile web add github:fly3366/dsh-o11y-plugin
 
 # 从某 profile 移除
