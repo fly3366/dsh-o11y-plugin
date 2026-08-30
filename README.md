@@ -61,6 +61,11 @@ emitting pipeline counters and GenAI (`gen_ai.*`) LLM spans.
 
 ## Configuration
 
+The same knobs are exposed as an `o11y` namespace in the dsh Web settings UI
+(via `@deepseek-ai/dsh-settings`), so they can be viewed and edited there; they
+persist and apply on the next dsh start. This no-ops on dsh versions without
+the settings service.
+
 | Key | Default | Description |
 |---|---|---|
 | `enabled` | `true` | master switch |

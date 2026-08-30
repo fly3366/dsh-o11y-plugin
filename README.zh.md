@@ -58,6 +58,10 @@ GenAI（`gen_ai.*`）LLM span。
 
 ## 配置
 
+同样的配置项以 `o11y` 命名空间暴露在 dsh Web 设置界面（经
+`@deepseek-ai/dsh-settings`），可查看/编辑并持久化，下次 dsh 启动生效；
+在无 settings 服务的旧版 dsh 上自动跳过。
+
 | 配置 | 默认 | 说明 |
 |---|---|---|
 | `enabled` | `true` | 总开关 |

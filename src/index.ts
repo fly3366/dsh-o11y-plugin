@@ -1,4 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
+import Schema from '@deepseek-ai/schemastery'
 import { metrics } from '@opentelemetry/api'
 import { logs, SeverityNumber } from '@opentelemetry/api-logs'
 import { resourceFromAttributes } from '@opentelemetry/resources'
@@ -84,6 +85,10 @@ export function apply(ctx: Context, config: O11yConfig) {
     })
   }
 
+  // Expose o11y knobs in the dsh Web settings UI (dsh-settings namespace).
+  // Guarded: no-ops when the settings service or package is unavailable.
+  void registerSettingsSection(ctx, { serviceName, endpoint, config })
+
   ctx.provide('o11y', {
     serviceName,
     endpoint,
@@ -93,4 +98,45 @@ export function apply(ctx: Context, config: O11yConfig) {
   ctx.effect(() => () => {
     for (const p of providers) void p.shutdown()
   })
+}
+
+const SettingsSchema = Schema.object({
+  serviceName: Schema.string().default('dsh-plugin'),
+  endpoint: Schema.string().default(''),
+  enableTraces: Schema.boolean().default(true),
+  enableMetrics: Schema.boolean().default(true),
+  enableLogs: Schema.boolean().default(true),
+  metricExportIntervalMs: Schema.number().default(60_000),
+  bridgeSessionTelemetry: Schema.boolean().default(true),
+})
+
+/**
+ * Register an `o11y` settings namespace so the dsh Web settings UI renders and
+ * persists these knobs. Provider-affecting values apply on next dsh start.
+ * No-ops when the settings service or dsh-settings package is unavailable.
+ */
+async function registerSettingsSection(
+  ctx: Context,
+  current: { serviceName: string; endpoint: string; config: O11yConfig },
+): Promise<void> {
+  try {
+    const { installSettingsSection, settingsNamespace } = await import('@deepseek-ai/dsh-settings')
+    installSettingsSection(
+      ctx,
+      settingsNamespace('o11y'),
+      SettingsSchema,
+      {
+        serviceName: current.serviceName,
+        endpoint: current.endpoint,
+        enableTraces: current.config.enableTraces,
+        enableMetrics: current.config.enableMetrics,
+        enableLogs: current.config.enableLogs,
+        metricExportIntervalMs: current.config.metricExportIntervalMs,
+        bridgeSessionTelemetry: current.config.bridgeSessionTelemetry,
+      },
+      { setSource: () => {}, onChange: () => {} },
+    )
+  } catch {
+    // settings not available in this dsh version; skip UI exposure
+  }
 }
