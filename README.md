@@ -66,15 +66,9 @@ The same knobs are exposed as an `o11y` namespace in the dsh Web settings UI
 persist and apply on the next dsh start. This no-ops on dsh versions without
 the settings service.
 
-### Web settings card (current limit)
-
-The Plugins settings tab renders third-party cards through the
-`settings.plugin.item` keyed slot, but that slot lives in the **web client
-composition**, which only in-repo client plugins can join. An external npm
-bundle's patch targets the host tree, so it cannot inject a client card today
-(`settingsScope`/`slots` are client-tree services). The server-side namespace
-above still works; a reference client card is kept in `src/client/` for when
-client-composition injection becomes available.
+> A reference Web settings **card** (client half) is developed on the
+> `wip/settings-ui` branch; dsh does not yet let external bundles inject into
+> the web client composition, so it is not shipped on `main`.
 
 | Key | Default | Description |
 |---|---|---|
