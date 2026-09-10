@@ -120,10 +120,16 @@ async function registerSettingsSection(
   current: { serviceName: string; endpoint: string; config: O11yConfig },
 ): Promise<void> {
   try {
-    const { installSettingsSection, settingsNamespace } = await import('@deepseek-ai/dsh-settings')
-    installSettingsSection(
+    const mod = (await import('@deepseek-ai/dsh-settings')) as unknown as {
+      installSettingsSection?: (...args: unknown[]) => void
+      settingsNamespace?: (ns: string) => unknown
+    }
+    if (typeof mod.installSettingsSection !== 'function' || typeof mod.settingsNamespace !== 'function') {
+      return // settings registration API not present in this dsh line
+    }
+    mod.installSettingsSection(
       ctx,
-      settingsNamespace('o11y'),
+      mod.settingsNamespace('o11y'),
       SettingsSchema,
       {
         serviceName: current.serviceName,
