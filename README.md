@@ -23,9 +23,9 @@ community-compatible observability without implementing OTel per plugin.
 
 | Item | Value |
 |---|---|
-| DSH compatibility | `@deepseek-ai/dsh` `0.1.0-rc.6`–`rc.8` (optional bridge hook unchanged; no dsh service deps) |
-| Runtime dependency | `@deepseek-ai/cordis` `4.0.1` only |
-| Last verified | 2026-08-20 (unit tests against `@deepseek-ai/cordis` `4.0.1`) |
+| DSH compatibility | `@deepseek-ai/dsh` `0.1.5-rc.2` (optional bridge hook unchanged; no dsh service deps) |
+| Runtime dependency | `@deepseek-ai/cordis` `4.0.2` only |
+| Last verified | unit tests against `@deepseek-ai/cordis` `4.0.2` / `@deepseek-ai/dsh-settings` `0.1.5-rc.2` |
 | Node | `^22.19 \|\| >=24` |
 | Profiles | `headless`, `web` |
 
@@ -64,11 +64,15 @@ emitting pipeline counters and GenAI (`gen_ai.*`) LLM spans.
 
 ## Configuration
 
-The same knobs are exposed as an `o11y` namespace in the dsh Web settings UI
-(via `@deepseek-ai/dsh-settings`), so they can be viewed and edited there; they
-persist and apply on the next dsh start. This no-ops on dsh versions without
-the settings service.
+When the host dsh exposes a settings-namespace API (`installSettingsSection` /
+`settingsNamespace` from `@deepseek-ai/dsh-settings`), the same knobs are
+registered as an `o11y` namespace in the dsh Web settings UI, so they can be
+viewed and edited there; they persist and apply on the next dsh start.
 
+> dsh `0.1.5` dropped `installSettingsSection`, so on that line the plugin
+> probes for the API and gracefully no-ops — config stays file/env-driven. The
+> integration lights up again automatically if a future dsh restores it.
+>
 > A reference Web settings **card** (client half) is developed on the
 > `wip/settings-ui` branch; dsh does not yet let external bundles inject into
 > the web client composition, so it is not shipped on `main`.

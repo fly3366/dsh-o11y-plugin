@@ -21,9 +21,9 @@ log，并将 dsh 会话遥测桥接为 OTel log。面向希望获得标准、社
 
 | 项 | 值 |
 |---|---|
-| DSH 兼容性 | `@deepseek-ai/dsh` `0.1.0-rc.6`–`rc.8`（可选桥接钩子未变；无 dsh 服务依赖） |
-| 运行时依赖 | 仅 `@deepseek-ai/cordis` `4.0.1` |
-| 最后验证 | 2026-08-20（基于 `@deepseek-ai/cordis` `4.0.1` 的单元测试） |
+| DSH 兼容性 | `@deepseek-ai/dsh` `0.1.5-rc.2`（可选桥接钩子未变；无 dsh 服务依赖） |
+| 运行时依赖 | 仅 `@deepseek-ai/cordis` `4.0.2` |
+| 最后验证 | 基于 `@deepseek-ai/cordis` `4.0.2` / `@deepseek-ai/dsh-settings` `0.1.5-rc.2` 的单元测试 |
 | Node | `^22.19 \|\| >=24` |
 | 适用 profile | `headless`、`web` |
 
@@ -61,9 +61,15 @@ GenAI（`gen_ai.*`）LLM span。
 
 ## 配置
 
-同样的配置项以 `o11y` 命名空间暴露在 dsh Web 设置界面（经
-`@deepseek-ai/dsh-settings`），可查看/编辑并持久化，下次 dsh 启动生效；
-在无 settings 服务的旧版 dsh 上自动跳过。
+当宿主 dsh 提供 settings 命名空间 API（`@deepseek-ai/dsh-settings` 的
+`installSettingsSection` / `settingsNamespace`）时，同样的配置项会以 `o11y`
+命名空间注册到 dsh Web 设置界面，可查看/编辑并持久化，下次 dsh 启动生效。
+
+> dsh `0.1.5` 移除了 `installSettingsSection`，因此在该版本上插件会探测此 API
+> 并优雅地空操作——配置仍由文件/环境变量驱动。若未来 dsh 恢复该 API，集成会自动重新生效。
+>
+> 参考用的 Web 设置**卡片**（客户端部分）在 `wip/settings-ui` 分支开发；dsh 尚不允许
+> 外部 bundle 注入 web 客户端组合，故未随 `main` 发布。
 
 | 配置 | 默认 | 说明 |
 |---|---|---|
