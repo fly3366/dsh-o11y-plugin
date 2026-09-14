@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
-import { metrics } from '@opentelemetry/api'
+import { metrics, trace } from '@opentelemetry/api'
 import { logs, SeverityNumber } from '@opentelemetry/api-logs'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import { NodeTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
@@ -21,6 +21,27 @@ export interface O11yHandle {
   serviceName: string
   endpoint: string
   active: boolean
+}
+
+/** Which OTel signals apply() registered globally, used to scope teardown. */
+export interface O11yTeardownFlags {
+  enableTraces: boolean
+  enableMetrics: boolean
+  enableLogs: boolean
+}
+
+/**
+ * Shut down providers and clear the OTel globals apply() set, so an in-process
+ * reload can re-register them (globals are set-once per process).
+ */
+export function teardownO11y(
+  providers: readonly { shutdown: () => Promise<void> }[],
+  flags: O11yTeardownFlags,
+): void {
+  for (const p of providers) void p.shutdown()
+  if (flags.enableTraces) trace.disable()
+  if (flags.enableMetrics) metrics.disable()
+  if (flags.enableLogs) logs.disable()
 }
 
 export function apply(ctx: Context, config: O11yConfig) {
@@ -95,9 +116,7 @@ export function apply(ctx: Context, config: O11yConfig) {
     active: true,
   } satisfies O11yHandle)
 
-  ctx.effect(() => () => {
-    for (const p of providers) void p.shutdown()
-  })
+  ctx.effect(() => () => teardownO11y(providers, config))
 }
 
 const SettingsSchema = Schema.object({
