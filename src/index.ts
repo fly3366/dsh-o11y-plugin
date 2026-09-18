@@ -44,6 +44,26 @@ export function teardownO11y(
   if (flags.enableLogs) logs.disable()
 }
 
+/** A dsh session-telemetry record (agent dimension) bridged into an OTel log. */
+export interface SessionTelemetryRecord {
+  severity?: string
+  kind?: string
+  attributes?: Record<string, unknown>
+}
+
+/**
+ * Map a dsh session-telemetry record to OTel log-record input. Pure so the
+ * severity/body/attribute mapping is unit-testable without dispatching events.
+ */
+export function toLogRecordInput(record: SessionTelemetryRecord) {
+  return {
+    severityNumber: record.severity === 'warn' ? SeverityNumber.WARN : SeverityNumber.INFO,
+    severityText: record.severity ?? 'info',
+    body: `dsh ${record.kind ?? 'record'}`,
+    attributes: (record.attributes ?? {}) as Record<string, string | number | boolean>,
+  }
+}
+
 export function apply(ctx: Context, config: O11yConfig) {
   if (!config.enabled) return
 
@@ -92,13 +112,7 @@ export function apply(ctx: Context, config: O11yConfig) {
     const on = (ctx as unknown as { on: (e: string, l: (r: unknown, next: () => unknown) => unknown) => void }).on
     on('session-telemetry/record', (record, next) => {
       try {
-        const r = record as { severity?: string; kind?: string; attributes?: Record<string, unknown> }
-        logger.emit({
-          severityNumber: r.severity === 'warn' ? SeverityNumber.WARN : SeverityNumber.INFO,
-          severityText: r.severity ?? 'info',
-          body: `dsh ${r.kind ?? 'record'}`,
-          attributes: (r.attributes ?? {}) as Record<string, string | number | boolean>,
-        })
+        logger.emit(toLogRecordInput(record as SessionTelemetryRecord))
       } catch {
         // bridging is best-effort
       }
