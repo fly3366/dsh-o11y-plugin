@@ -21,9 +21,9 @@ log，并将 dsh 会话遥测桥接为 OTel log。面向希望获得标准、社
 
 | 项 | 值 |
 |---|---|
-| DSH 兼容性 | `@deepseek-ai/dsh` `0.1.5-rc.2`（可选桥接钩子未变；无 dsh 服务依赖） |
-| 运行时依赖 | 仅 `@deepseek-ai/cordis` `4.0.2` |
-| 最后验证 | 基于 `@deepseek-ai/cordis` `4.0.2` / `@deepseek-ai/dsh-settings` `0.1.5-rc.2` 的单元测试 |
+| DSH 兼容性 | `@deepseek-ai/dsh` `0.1.7-rc.1`（已确认 `session-telemetry/record` 桥接事件仍存在；无 dsh 服务依赖） |
+| 运行时依赖 | 仅 `@deepseek-ai/cordis` `4.0.4` |
+| 最后验证 | 基于 `@deepseek-ai/cordis` `4.0.4` / `@deepseek-ai/dsh-settings` `0.1.7-rc.1` 的单元测试 |
 | Node | `^22.19 \|\| >=24` |
 | 适用 profile | `headless`、`web` |
 
@@ -65,8 +65,9 @@ GenAI（`gen_ai.*`）LLM span。
 `installSettingsSection` / `settingsNamespace`）时，同样的配置项会以 `o11y`
 命名空间注册到 dsh Web 设置界面，可查看/编辑并持久化，下次 dsh 启动生效。
 
-> dsh `0.1.5` 移除了 `installSettingsSection`，因此在该版本上插件会探测此 API
-> 并优雅地空操作——配置仍由文件/环境变量驱动。若未来 dsh 恢复该 API，集成会自动重新生效。
+> dsh `0.1.5` 移除了 `installSettingsSection`，`0.1.7-rc.1` 仍未恢复，因此在该等版本上
+> 插件会探测此 API 并优雅地空操作——配置仍由文件/环境变量驱动。若未来 dsh 恢复该 API，
+> 集成会自动重新生效。
 >
 > 参考用的 Web 设置**卡片**（客户端部分）在 `wip/settings-ui` 分支开发；dsh 尚不允许
 > 外部 bundle 注入 web 客户端组合，故未随 `main` 发布。
