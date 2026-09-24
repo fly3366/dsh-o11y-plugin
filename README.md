@@ -23,9 +23,9 @@ community-compatible observability without implementing OTel per plugin.
 
 | Item | Value |
 |---|---|
-| DSH compatibility | `@deepseek-ai/dsh` `0.1.7-rc.1` (`session-telemetry/record` bridge event confirmed present; no dsh service deps) |
+| DSH compatibility | `@deepseek-ai/dsh` `0.1.7-rc.2` (`session-telemetry/record` bridge event confirmed present; no dsh service deps) |
 | Runtime dependency | `@deepseek-ai/cordis` `4.0.4` only |
-| Last verified | unit tests against `@deepseek-ai/cordis` `4.0.4` / `@deepseek-ai/dsh-settings` `0.1.7-rc.1` |
+| Last verified | unit tests against `@deepseek-ai/cordis` `4.0.4` / `@deepseek-ai/dsh-settings` `0.1.7-rc.2` |
 | Node | `^22.19 \|\| >=24` |
 | Profiles | `headless`, `web` |
 
@@ -69,14 +69,16 @@ When the host dsh exposes a settings-namespace API (`installSettingsSection` /
 registered as an `o11y` namespace in the dsh Web settings UI, so they can be
 viewed and edited there; they persist and apply on the next dsh start.
 
-> dsh `0.1.5` dropped `installSettingsSection` and `0.1.7-rc.1` still lacks it,
+> dsh `0.1.5` dropped `installSettingsSection` and `0.1.7-rc.2` still lacks it,
 > so on those lines the plugin probes for the API and gracefully no-ops — config
 > stays file/env-driven. The integration lights up again automatically if a
 > future dsh restores it.
 >
-> A reference Web settings **card** (client half) is developed on the
-> `wip/settings-ui` branch; dsh does not yet let external bundles inject into
-> the web client composition, so it is not shipped on `main`.
+> A reference Web settings **card** (client half) is parked on the
+> `wip/settings-ui` branch. It predates dsh's official client-plugin mechanism
+> (`dsh.client` declaration + `/plugins`-served bundles + `ctx.slots.register`,
+> shipped in the 0.1.7 line), so reviving it means reworking the card onto that
+> contract; it is not shipped on `main`.
 
 | Key | Default | Description |
 |---|---|---|
