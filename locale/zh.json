@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "dsh-o11y",
+    "description": "面向 dsh 及其插件的统一 metric/log/trace 适配（企业级 OTel）。"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "dsh-o11y",
+    "description": "Unified metric/log/trace adaptation for dsh and its plugins (enterprise OTel)."
+  }
+}

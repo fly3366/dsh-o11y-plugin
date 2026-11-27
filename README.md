@@ -77,6 +77,16 @@ Any plugin that calls `trace.getTracer(...)` / `metrics.getMeter(...)` /
 [deepjit](https://github.com/fly3366/DeepJIT) is the reference consumer,
 emitting pipeline counters and GenAI (`gen_ai.*`) LLM spans.
 
+## Web UI
+
+On a `web` profile, o11y adds a read-only status panel to its plugin detail page
+(Plugins → dsh-o11y): active signals (traces/metrics/logs), OTLP endpoint,
+service name/namespace, source attribution, session-bridge state, and core scope
+prefixes. The panel is a hand-written browser bundle (`web/client.js`, no build
+step) rendered into `plugins.detail.section`, reading a Host-only JSON route
+(`GET /api/o11y/status`). Configuration changes apply on the next dsh start, so
+the panel is read-only by design. Inactive in headless profiles.
+
 ## Configuration
 
 Config is file/env-driven (cordis patch / profile config); provider-affecting

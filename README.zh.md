@@ -72,6 +72,15 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 dsh --profile headless "say hi
 [deepjit](https://github.com/fly3366/DeepJIT) 为参考使用方，上报管线计数器与
 GenAI（`gen_ai.*`）LLM span。
 
+## Web 界面
+
+在 `web` profile 下，o11y 会在其插件详情页（插件 → dsh-o11y）增加一个只读状态
+面板：生效信号（trace/metric/log）、OTLP endpoint、服务名/命名空间、来源归因、
+会话桥接状态、本体 scope 前缀。面板是手写浏览器 bundle（`web/client.js`，无需
+构建），渲染进 `plugins.detail.section`，读取仅 Host 可见的 JSON 路由
+（`GET /api/o11y/status`）。配置变更下次 dsh 启动才生效，故面板按设计为只读。
+headless profile 下不生效。
+
 ## 配置
 
 配置由文件/环境变量驱动（cordis patch / profile config）；影响 provider 的取值

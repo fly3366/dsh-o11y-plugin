@@ -40,6 +40,7 @@ function bridgeCtx() {
     },
     provide: () => {},
     effect: () => {},
+    inject: () => {},
   } as unknown as Context
   return { ctx, getListener: () => listener }
 }

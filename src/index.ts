@@ -9,6 +9,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
 import type { O11yConfig } from './config.ts'
+import { registerStatusRoutes, buildStatusPayload } from './status-routes.ts'
 
 export { Config } from './config.ts'
 
@@ -157,6 +158,11 @@ export function apply(ctx: Context, config: O11yConfig) {
     endpoint,
     active: true,
   } satisfies O11yHandle)
+
+  // Web UI status route. `connection` is web-profile-only, so inject it nested
+  // (not in the top-level inject array) to keep headless activation unchanged.
+  ctx.inject(['connection'], (scope) =>
+    registerStatusRoutes(scope, buildStatusPayload(config, serviceName, endpoint, true)))
 
   ctx.effect(() => () => teardownO11y(providers, config))
 }
