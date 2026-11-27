@@ -14,6 +14,10 @@ function defaults(): O11yConfig {
     enableLogs: true,
     metricExportIntervalMs: 60_000,
     bridgeSessionTelemetry: true,
+    serviceNamespace: '',
+    resourceAttributes: {},
+    sourceAttribution: true,
+    coreScopePrefixes: ['dsh', '@deepseek-ai'],
   }
 }
 

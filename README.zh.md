@@ -11,11 +11,24 @@
 
 ## 概述
 
-dsh 自带会话级 OTel 遥测，但未向插件暴露 metric 或插件维度的可观测能力。
-dsh-o11y-plugin 收敛该缺口：注册全局 OpenTelemetry providers，使任何使用标准
-`@opentelemetry/api` 的插件都能经由单一、统一配置的管线导出 trace / metric /
-log，并将 dsh 会话遥测桥接为 OTel log。面向希望获得标准、社区兼容可观测性而
-不愿各自实现 OTel 的插件作者。
+dsh-o11y-plugin 是面向 **dsh 及其插件的统一 metric / log / trace 适配层**，
+为企业级部署设计。dsh 官方遥测（`ctx.otel`）仅提供私有、feedback 门控、脱敏的
+会话/产品 **log** 通道，不安装全局 OTel provider，也不向插件暴露 metric/trace
+API。o11y 填补该缺口：注册全局 OpenTelemetry providers，使 dsh 本体与任何使用
+标准 `@opentelemetry/api` 的插件都能经由单一、统一配置的管线导出 trace /
+metric / log。
+
+企业级特性：
+
+- **可配置命名空间**——部署/租户级 `service.namespace` 与自定义 resource 属性
+  作用于所有信号；并对每条信号做来源归因（`dsh.source` = `core` | `plugin`、
+  `dsh.source.name` = 发射方 scope），便于后端区分租户、把遥测归因到 dsh 本体
+  或具体插件。
+- **合规会话桥接**——dsh 会话遥测经官方脱敏 waterfall 的**脱敏后**记录桥接为
+  OTel log，与官方 backend 收到的一致（不泄露脱敏前内容）。
+
+面向希望获得标准、社区兼容、可归因可观测性而不愿各自实现 OTel 的平台团队与
+插件作者。
 
 ## 兼容性
 
@@ -23,7 +36,7 @@ log，并将 dsh 会话遥测桥接为 OTel log。面向希望获得标准、社
 |---|---|
 | DSH 兼容性 | `@deepseek-ai/dsh` `0.2.2-rc.5`（已确认 `session-telemetry/record` 桥接事件仍存在；无 dsh 服务依赖） |
 | 运行时依赖 | 仅 `@deepseek-ai/cordis` `4.1.0` |
-| 最后验证 | 基于 `@deepseek-ai/cordis` `4.1.0` / `@deepseek-ai/dsh-settings` `0.2.2-rc.5` 的单元测试 |
+| 最后验证 | 基于 `@deepseek-ai/cordis` `4.1.0` / dsh `0.2.2-rc.5` 遥测契约的单元测试 |
 | Node | `^22.19 \|\| >=24` |
 | 适用 profile | `headless`、`web` |
 
@@ -61,17 +74,8 @@ GenAI（`gen_ai.*`）LLM span。
 
 ## 配置
 
-当宿主 dsh 提供 settings 命名空间 API（`@deepseek-ai/dsh-settings` 的
-`installSettingsSection` / `settingsNamespace`）时，同样的配置项会以 `o11y`
-命名空间注册到 dsh Web 设置界面，可查看/编辑并持久化，下次 dsh 启动生效。
-
-> dsh `0.1.5` 移除了 `installSettingsSection`，`0.2.2-rc.5` 仍未恢复，因此在该等版本上
-> 插件会探测此 API 并优雅地空操作——配置仍由文件/环境变量驱动。若未来 dsh 恢复该 API，
-> 集成会自动重新生效。
->
-> 参考用的 Web 设置**卡片**（客户端部分）停在 `wip/settings-ui` 分支。它早于 dsh 官方的
-> client-plugin 机制（`dsh.client` 声明 + `/plugins` 提供 bundle + `ctx.slots.register`，
-> 0.1.7 线已发布），重启时需按该契约重做；未随 `main` 发布。
+配置由文件/环境变量驱动（cordis patch / profile config）；影响 provider 的取值
+下次 dsh 启动生效。
 
 | 配置 | 默认 | 说明 |
 |---|---|---|
@@ -80,7 +84,11 @@ GenAI（`gen_ai.*`）LLM span。
 | `endpoint` | `''`（→ `OTEL_EXPORTER_OTLP_ENDPOINT` → `http://localhost:4318`） | OTLP/HTTP endpoint |
 | `enableTraces` / `enableMetrics` / `enableLogs` | `true` | 按信号开关 |
 | `metricExportIntervalMs` | `60000` | metric 周期导出间隔 |
-| `bridgeSessionTelemetry` | `true` | 是否桥接 dsh 会话遥测到 OTel log |
+| `bridgeSessionTelemetry` | `true` | 是否桥接 dsh 会话遥测（脱敏后）到 OTel log |
+| `serviceNamespace` | `''` | 部署/租户命名空间 → resource `service.namespace` + 每信号 `dsh.namespace` |
+| `resourceAttributes` | `{}` | 合并到所有信号的额外 resource 属性（企业标签） |
+| `sourceAttribution` | `true` | 为传入 trace/log 打 `dsh.source` / `dsh.source.name` |
+| `coreScopePrefixes` | `['dsh','@deepseek-ai']` | 视为 dsh 本体的 scope 前缀（其余为插件） |
 
 敏感项：不读取、不存储凭据；仅可选的 OTLP endpoint 涉及网络。
 
@@ -89,8 +97,8 @@ GenAI（`gen_ai.*`）LLM span。
 - **文件**：不写任何文件；遥测导出前均在内存。
 - **网络**：仅向配置的 endpoint 发 OTLP/HTTP；无 collector 时静默丢弃。
 - **凭据**：无。
-- **用户数据**：桥接时在内存观察 session-telemetry record 并转为 OTel log；
-  本插件不做任何持久化。
+- **用户数据**：桥接时在内存观察**脱敏后**的 session-telemetry record 并转为
+  OTel log；本插件不做任何持久化，脱敏前内容绝不导出。
 
 ## 故障排查
 

@@ -1,8 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
-import Schema from '@deepseek-ai/schemastery'
 import { metrics, trace } from '@opentelemetry/api'
 import { logs, SeverityNumber } from '@opentelemetry/api-logs'
-import { resourceFromAttributes } from '@opentelemetry/resources'
+import { buildResource, SourceSpanProcessor, SourceLogProcessor, namespaceView } from './namespace.ts'
 import { NodeTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { LoggerProvider, BatchLogRecordProcessor } from '@opentelemetry/sdk-logs'
@@ -44,23 +43,45 @@ export function teardownO11y(
   if (flags.enableLogs) logs.disable()
 }
 
-/** A dsh session-telemetry record (agent dimension) bridged into an OTel log. */
+/** A dsh session-telemetry record (official capture shape) bridged into an OTel log. */
 export interface SessionTelemetryRecord {
-  severity?: string
-  kind?: string
+  sourceEvent?: { sessionId: string; envelope: { type?: string } }
+  channel?: 'ledger' | 'ops'
+  time?: number
+  severity?: 'info' | 'warn' | 'error'
   attributes?: Record<string, unknown>
+  body?: unknown
+}
+
+const SEVERITY_NUMBER: Record<string, SeverityNumber> = {
+  info: SeverityNumber.INFO,
+  warn: SeverityNumber.WARN,
+  error: SeverityNumber.ERROR,
 }
 
 /**
- * Map a dsh session-telemetry record to OTel log-record input. Pure so the
- * severity/body/attribute mapping is unit-testable without dispatching events.
+ * Map a post-redaction dsh session-telemetry record to OTel log-record input.
+ * Pure so the mapping is unit-testable without dispatching events. The body is
+ * the redacted payload; identity attributes are added alongside the record's own.
  */
 export function toLogRecordInput(record: SessionTelemetryRecord) {
+  const attributes: Record<string, string | number | boolean> = {}
+  for (const [key, value] of Object.entries(record.attributes ?? {})) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      attributes[key] = value
+    }
+  }
+  if (record.channel) attributes['dsh.channel'] = record.channel
+  if (record.sourceEvent?.sessionId) attributes['session.id'] = record.sourceEvent.sessionId
+  if (record.sourceEvent?.envelope?.type) attributes['event.type'] = record.sourceEvent.envelope.type
+  const body = typeof record.body === 'string'
+    ? record.body
+    : record.body === undefined ? '' : JSON.stringify(record.body)
   return {
-    severityNumber: record.severity === 'warn' ? SeverityNumber.WARN : SeverityNumber.INFO,
+    severityNumber: SEVERITY_NUMBER[record.severity ?? 'info'] ?? SeverityNumber.INFO,
     severityText: record.severity ?? 'info',
-    body: `dsh ${record.kind ?? 'record'}`,
-    attributes: (record.attributes ?? {}) as Record<string, string | number | boolean>,
+    body: body || 'dsh session record',
+    attributes,
   }
 }
 
@@ -70,14 +91,18 @@ export function apply(ctx: Context, config: O11yConfig) {
   const endpoint =
     config.endpoint || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318'
   const serviceName = config.serviceName || process.env.OTEL_SERVICE_NAME || 'dsh-plugin'
-  const resource = resourceFromAttributes({ 'service.name': serviceName })
+  const resource = buildResource(serviceName, config.serviceNamespace, config.resourceAttributes)
+  const nsOptions = { namespace: config.serviceNamespace, corePrefixes: config.coreScopePrefixes }
 
   const providers: { shutdown: () => Promise<void> }[] = []
 
   if (config.enableTraces) {
     const tracerProvider = new NodeTracerProvider({
       resource,
-      spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter({ url: `${endpoint}/v1/traces` }))],
+      spanProcessors: [
+        ...(config.sourceAttribution ? [new SourceSpanProcessor(nsOptions)] : []),
+        new BatchSpanProcessor(new OTLPTraceExporter({ url: `${endpoint}/v1/traces` })),
+      ],
     })
     tracerProvider.register()
     providers.push(tracerProvider)
@@ -86,6 +111,7 @@ export function apply(ctx: Context, config: O11yConfig) {
   if (config.enableMetrics) {
     const meterProvider = new MeterProvider({
       resource,
+      views: config.serviceNamespace ? [namespaceView(config.serviceNamespace)] : [],
       readers: [
         new PeriodicExportingMetricReader({
           exporter: new OTLPMetricExporter({ url: `${endpoint}/v1/metrics` }),
@@ -100,29 +126,31 @@ export function apply(ctx: Context, config: O11yConfig) {
   if (config.enableLogs) {
     const loggerProvider = new LoggerProvider({
       resource,
-      processors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: `${endpoint}/v1/logs` }) })],
+      processors: [
+        ...(config.sourceAttribution ? [new SourceLogProcessor(nsOptions)] : []),
+        new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: `${endpoint}/v1/logs` }) }),
+      ],
     })
     logs.setGlobalLoggerProvider(loggerProvider)
     providers.push(loggerProvider)
   }
 
-  // Bridge dsh session telemetry (agent dimension) into OTel logs, for free.
+  // Bridge dsh session telemetry into OTel logs. Export the POST-redaction
+  // record (next()'s result) so the bridge respects the official redaction
+  // waterfall instead of leaking pre-redaction payloads.
   if (config.bridgeSessionTelemetry) {
     const logger = logs.getLogger('dsh-o11y')
     const on = (ctx as unknown as { on: (e: string, l: (r: unknown, next: () => unknown) => unknown) => void }).on
-    on('session-telemetry/record', (record, next) => {
+    on('session-telemetry/record', (_record, next) => {
+      const redacted = next() as SessionTelemetryRecord
       try {
-        logger.emit(toLogRecordInput(record as SessionTelemetryRecord))
+        logger.emit(toLogRecordInput(redacted))
       } catch {
         // bridging is best-effort
       }
-      return next()
+      return redacted
     })
   }
-
-  // Expose o11y knobs in the dsh Web settings UI (dsh-settings namespace).
-  // Guarded: no-ops when the settings service or package is unavailable.
-  void registerSettingsSection(ctx, { serviceName, endpoint, config })
 
   ctx.provide('o11y', {
     serviceName,
@@ -131,51 +159,4 @@ export function apply(ctx: Context, config: O11yConfig) {
   } satisfies O11yHandle)
 
   ctx.effect(() => () => teardownO11y(providers, config))
-}
-
-const SettingsSchema = Schema.object({
-  serviceName: Schema.string().default('dsh-plugin'),
-  endpoint: Schema.string().default(''),
-  enableTraces: Schema.boolean().default(true),
-  enableMetrics: Schema.boolean().default(true),
-  enableLogs: Schema.boolean().default(true),
-  metricExportIntervalMs: Schema.number().default(60_000),
-  bridgeSessionTelemetry: Schema.boolean().default(true),
-})
-
-/**
- * Register an `o11y` settings namespace so the dsh Web settings UI renders and
- * persists these knobs. Provider-affecting values apply on next dsh start.
- * No-ops when the settings service or dsh-settings package is unavailable.
- */
-async function registerSettingsSection(
-  ctx: Context,
-  current: { serviceName: string; endpoint: string; config: O11yConfig },
-): Promise<void> {
-  try {
-    const mod = (await import('@deepseek-ai/dsh-settings')) as unknown as {
-      installSettingsSection?: (...args: unknown[]) => void
-      settingsNamespace?: (ns: string) => unknown
-    }
-    if (typeof mod.installSettingsSection !== 'function' || typeof mod.settingsNamespace !== 'function') {
-      return // settings registration API not present in this dsh line
-    }
-    mod.installSettingsSection(
-      ctx,
-      mod.settingsNamespace('o11y'),
-      SettingsSchema,
-      {
-        serviceName: current.serviceName,
-        endpoint: current.endpoint,
-        enableTraces: current.config.enableTraces,
-        enableMetrics: current.config.enableMetrics,
-        enableLogs: current.config.enableLogs,
-        metricExportIntervalMs: current.config.metricExportIntervalMs,
-        bridgeSessionTelemetry: current.config.bridgeSessionTelemetry,
-      },
-      { setSource: () => {}, onChange: () => {} },
-    )
-  } catch {
-    // settings not available in this dsh version; skip UI exposure
-  }
 }

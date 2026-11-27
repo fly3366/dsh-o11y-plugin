@@ -15,33 +15,23 @@ function cfg(over: Partial<O11yConfig> = {}): O11yConfig {
     enableLogs: false,
     metricExportIntervalMs: 60_000,
     bridgeSessionTelemetry: true,
+    serviceNamespace: '',
+    resourceAttributes: {},
+    sourceAttribution: true,
+    coreScopePrefixes: ['dsh', '@deepseek-ai'],
     ...over,
   }
 }
 
-test('o11y: toLogRecordInput maps severity/kind/attributes with defaults', () => {
-  assert.deepEqual(toLogRecordInput({ kind: 'turn', severity: 'warn', attributes: { a: 1 } }), {
-    severityNumber: SeverityNumber.WARN,
-    severityText: 'warn',
-    body: 'dsh turn',
-    attributes: { a: 1 },
-  })
-  assert.deepEqual(toLogRecordInput({}), {
-    severityNumber: SeverityNumber.INFO,
-    severityText: 'info',
-    body: 'dsh record',
-    attributes: {},
-  })
-})
-
-test('o11y: apply wires the session-telemetry bridge and emits mapped log records', () => {
-  // Spy logger via a fake global provider: disable() first so set-once semantics
-  // can't leave a provider from another test in place.
+function spyLogger() {
   const emitted: unknown[] = []
   const fakeProvider = { getLogger: () => ({ emit: (rec: unknown) => { emitted.push(rec) } }) }
   logs.disable()
   logs.setGlobalLoggerProvider(fakeProvider as unknown as LoggerProvider)
+  return emitted
+}
 
+function bridgeCtx() {
   let listener: ((record: unknown, next: () => unknown) => unknown) | undefined
   const ctx = {
     on: (event: string, handler: (record: unknown, next: () => unknown) => unknown) => {
@@ -51,42 +41,60 @@ test('o11y: apply wires the session-telemetry bridge and emits mapped log record
     provide: () => {},
     effect: () => {},
   } as unknown as Context
+  return { ctx, getListener: () => listener }
+}
 
-  apply(ctx, cfg())
-  assert.ok(listener, 'bridge listener registered on session-telemetry/record')
-
-  let nextCalled = false
-  const record = { kind: 'turn', severity: 'warn', attributes: { sessionId: 's1' } }
-  listener!(record, () => {
-    nextCalled = true
-    return undefined
-  })
-
-  assert.equal(nextCalled, true, 'next() is invoked so the middleware chain continues')
-  assert.equal(emitted.length, 1, 'one log record emitted')
-  assert.deepEqual(emitted[0], toLogRecordInput(record), 'emits the mapped record')
+test('o11y: toLogRecordInput maps the official redacted record shape', () => {
+  const record = {
+    channel: 'ledger' as const,
+    severity: 'warn' as const,
+    attributes: { a: 1, nested: { x: 1 } },
+    sourceEvent: { sessionId: 's1', envelope: { type: 'turn/end' } },
+    body: { text: 'redacted payload' },
+  }
+  const out = toLogRecordInput(record)
+  assert.equal(out.severityNumber, SeverityNumber.WARN)
+  assert.equal(out.severityText, 'warn')
+  assert.equal(out.body, JSON.stringify({ text: 'redacted payload' }))
+  assert.equal(out.attributes.a, 1)
+  assert.equal(out.attributes['dsh.channel'], 'ledger')
+  assert.equal(out.attributes['session.id'], 's1')
+  assert.equal(out.attributes['event.type'], 'turn/end')
+  assert.equal('nested' in out.attributes, false, 'non-scalar attributes dropped')
 })
 
-test('o11y: bridge is best-effort — a throwing emit still calls next()', () => {
+test('o11y: toLogRecordInput defaults for an empty record', () => {
+  const out = toLogRecordInput({})
+  assert.equal(out.severityNumber, SeverityNumber.INFO)
+  assert.equal(out.severityText, 'info')
+  assert.equal(out.body, 'dsh session record')
+  assert.deepEqual(out.attributes, {})
+})
+
+test('o11y: bridge emits the POST-redaction record (next result), not the incoming one', () => {
+  const emitted = spyLogger()
+  const { ctx, getListener } = bridgeCtx()
+  apply(ctx, cfg())
+  const listener = getListener()
+  assert.ok(listener, 'bridge listener registered on session-telemetry/record')
+
+  const incoming = { channel: 'ledger', severity: 'info', body: { secret: 'RAW' }, attributes: {} }
+  const redacted = { channel: 'ledger', severity: 'info', body: { secret: '[REDACTED]' }, attributes: {} }
+  const returned = listener!(incoming, () => redacted)
+
+  assert.equal(returned, redacted, 'waterfall chain continues with the redacted record')
+  assert.equal(emitted.length, 1)
+  assert.deepEqual(emitted[0], toLogRecordInput(redacted), 'emits the redacted record, not the raw incoming one')
+  assert.equal(JSON.stringify(emitted[0]).includes('RAW'), false, 'pre-redaction payload never exported')
+})
+
+test('o11y: bridge is best-effort — a throwing emit still returns next() result', () => {
   const fakeProvider = { getLogger: () => ({ emit: () => { throw new Error('boom') } }) }
   logs.disable()
   logs.setGlobalLoggerProvider(fakeProvider as unknown as LoggerProvider)
-
-  let listener: ((record: unknown, next: () => unknown) => unknown) | undefined
-  const ctx = {
-    on: (event: string, handler: (record: unknown, next: () => unknown) => unknown) => {
-      if (event === 'session-telemetry/record') listener = handler
-      return () => {}
-    },
-    provide: () => {},
-    effect: () => {},
-  } as unknown as Context
-
+  const { ctx, getListener } = bridgeCtx()
   apply(ctx, cfg())
-  let nextCalled = false
-  listener!({ kind: 'x' }, () => {
-    nextCalled = true
-    return undefined
-  })
-  assert.equal(nextCalled, true, 'a throwing emit is swallowed and next() still runs')
+  const redacted = { channel: 'ops', severity: 'error', body: 'x' }
+  const returned = getListener()!({ body: 'raw' }, () => redacted)
+  assert.equal(returned, redacted, 'a throwing emit is swallowed and the redacted record still propagates')
 })
